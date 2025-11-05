@@ -1,5 +1,5 @@
 // src/hooks/useAISummary.ts
-import { useMutation } from '@tanstack/react-query';
+/*import { useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 
 interface SummaryRequest {
@@ -27,6 +27,24 @@ export const useAISummary = () => {
       }
       
       return response.data.data.summary;
+    },
+  });
+};
+*/
+// src/hooks/useAISummary.ts
+import { useMutation } from '@tanstack/react-query';
+
+export const useAISummary = () => {
+  return useMutation({
+    mutationFn: async ({ text, type }: { text: string; type: 'publication' | 'trial' }) => {
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, type }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate summary');
+      return response.json();
     },
   });
 };

@@ -17,7 +17,9 @@ function ClinicalTrialsContent() {
   });
   const [trials, setTrials] = useState<ClinicalTrial[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
+  // Mock data
   const mockTrials: ClinicalTrial[] = [
     {
       _id: '1',
@@ -123,32 +125,49 @@ function ClinicalTrialsContent() {
     }
   ];
 
+  // Search handler
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
     setTimeout(() => {
-      setTrials(mockTrials.filter(trial => 
-        trial.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trial.conditions.some(condition => 
-          condition.toLowerCase().includes(searchQuery.toLowerCase())
+      setTrials(
+        mockTrials.filter(trial =>
+          trial.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          trial.conditions.some(condition =>
+            condition.toLowerCase().includes(searchQuery.toLowerCase())
+          )
         )
-      ));
+      );
       setLoading(false);
     }, 1000);
   };
 
   const handleSaveTrial = async (trialId: string) => {
     console.log('Saving trial:', trialId);
-    // Implement save functionality
   };
 
   const handleContactTrial = (trial: ClinicalTrial) => {
     const contactEmail = trial.contacts[0]?.email || 'clinicaltrials@curalink.com';
     const subject = `Inquiry about: ${trial.title}`;
     const body = `Hello,\n\nI am interested in learning more about the clinical trial "${trial.title}" (NCT ID: ${trial.nctId}).\n\nPlease provide me with more information.\n\nThank you.`;
-    
-    window.open(`mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+    window.open(
+      `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+      '_blank'
+    );
+  };
+
+  const handleGenerateSummary = async (content: string) => {
+    setIsGeneratingSummary(true);
+    try {
+      // Simulate AI summary API
+      setTimeout(() => {
+        console.log('Generated summary for:', content);
+        setIsGeneratingSummary(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to generate summary:', error);
+      setIsGeneratingSummary(false);
+    }
   };
 
   return (
@@ -181,45 +200,6 @@ function ClinicalTrialsContent() {
                 Search
               </Button>
             </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Status</option>
-                  <option value="recruiting">Recruiting</option>
-                  <option value="completed">Completed</option>
-                  <option value="active">Active</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phase</label>
-                <select
-                  value={filters.phase}
-                  onChange={(e) => setFilters(prev => ({ ...prev, phase: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Phases</option>
-                  <option value="Phase 1">Phase 1</option>
-                  <option value="Phase 2">Phase 2</option>
-                  <option value="Phase 3">Phase 3</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input
-                  type="text"
-                  placeholder="Country or City"
-                  value={filters.location}
-                  onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
           </form>
         </CardContent>
       </Card>
@@ -227,7 +207,7 @@ function ClinicalTrialsContent() {
       {/* Results */}
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold">Search Results</h2>
-        
+
         {loading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -239,34 +219,18 @@ function ClinicalTrialsContent() {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {trial.title}
-                    </h3>
-                    {trial.briefTitle && (
-                      <p className="text-gray-600 mb-2 italic">{trial.briefTitle}</p>
-                    )}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{trial.title}</h3>
+                    <p className="text-gray-600 mb-2 italic">{trial.briefTitle}</p>
                     <p className="text-gray-600 mb-2">
                       <strong>Conditions:</strong> {trial.conditions.join(', ')}
                     </p>
                     <p className="text-gray-600 mb-2">
                       <strong>Interventions:</strong> {trial.interventions.join(', ')}
                     </p>
-                    {trial.sponsors && trial.sponsors.length > 0 && (
-                      <p className="text-gray-600 mb-2">
-                        <strong>Sponsors:</strong> {trial.sponsors.join(', ')}
-                      </p>
-                    )}
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span className={`px-2 py-1 rounded-full ${
-                        trial.status === 'recruiting' 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {trial.status}
-                      </span>
-                      <span>Phase: {trial.phases.join(', ')}</span>
-                      <span>Location: {trial.locations[0]?.country}</span>
-                    </div>
+                    <p className="text-gray-600 mb-2">
+                      <strong>Status:</strong> {trial.status} — <strong>Phase:</strong> {trial.phases.join(', ')}
+                    </p>
+
                     {trial.aiSummary && (
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                         <p className="text-sm text-blue-700">
@@ -275,29 +239,23 @@ function ClinicalTrialsContent() {
                       </div>
                     )}
                   </div>
-                  <div className="flex space-x-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSaveTrial(trial._id)}
-                    >
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Button variant="outline" size="sm" onClick={() => handleSaveTrial(trial._id)}>
                       Save
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleContactTrial(trial)}
-                    >
+                    <Button size="sm" onClick={() => handleContactTrial(trial)}>
                       Contact
                     </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleGenerateSummary(trial.description || '')}
+                      disabled={isGeneratingSummary}
+                    >
+                      {isGeneratingSummary ? 'Generating...' : 'Generate Summary'}
+                    </Button>
+
                   </div>
                 </div>
-                {trial.nctId && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      <strong>NCT ID:</strong> {trial.nctId}
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))

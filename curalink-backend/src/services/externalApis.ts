@@ -47,28 +47,30 @@
   // ... other methods if needed ...
 }
 */
-// src/services/externalApis.ts
 import axios from 'axios';
 import ClinicalTrial from '../models/ClinicalTrial';
 import Publication from '../models/Publication';
 import Expert from '../models/Expert';
 
 export class ExternalAPIService {
+  // ===============================
   // ClinicalTrials.gov API
+  // ===============================
   static async fetchClinicalTrials(condition: string, location?: string): Promise<any[]> {
     try {
       console.log(`🔍 Fetching clinical trials for: ${condition}`);
-      
+
       const searchExpr = location ? `${condition} AND ${location}` : condition;
       const response = await axios.get(
         'https://clinicaltrials.gov/api/query/study_fields',
         {
           params: {
             expr: searchExpr,
-            fields: 'NCTId,BriefTitle,OfficialTitle,Condition,InterventionName,Phase,OverallStatus,LocationFacility,LocationCity,LocationCountry,LocationStatus,EligibilityCriteria,Gender,MinimumAge,MaximumAge,HealthyVolunteers,Sponsor,StartDate,CompletionDate',
+            fields:
+              'NCTId,BriefTitle,OfficialTitle,BriefSummary,Condition,InterventionName,Phase,OverallStatus,LocationFacility,LocationCity,LocationCountry,LocationStatus,EligibilityCriteria,Gender,MinimumAge,MaximumAge,HealthyVolunteers,Sponsor,StartDate,CompletionDate',
             fmt: 'json',
-            max_rnk: 50
-          }
+            max_rnk: 50,
+          },
         }
       );
 
@@ -77,12 +79,13 @@ export class ExternalAPIService {
 
       for (const trial of trials) {
         const existingTrial = await ClinicalTrial.findOne({ nctId: trial.NCTId?.[0] });
-        
+
         if (!existingTrial) {
           const newTrial = new ClinicalTrial({
-            nctId: trial.NCTId?.[0],
-            title: trial.OfficialTitle?.[0] || trial.BriefTitle?.[0],
-            briefTitle: trial.BriefTitle?.[0],
+            nctId: trial.NCTId?.[0] || '', // ✅ fallback added
+            title: trial.OfficialTitle?.[0] || trial.BriefTitle?.[0] || 'Untitled Trial',
+            briefTitle: trial.BriefTitle?.[0] || '',
+            description: trial.BriefSummary?.[0] || '', // ✅ avoid undefined
             conditions: trial.Condition || [],
             interventions: trial.InterventionName || [],
             phases: trial.Phase || [],
@@ -92,16 +95,19 @@ export class ExternalAPIService {
               gender: trial.Gender?.[0] || 'All',
               minimumAge: trial.MinimumAge?.[0] || '',
               maximumAge: trial.MaximumAge?.[0] || '',
-              healthyVolunteers: trial.HealthyVolunteers?.[0] === 'Accepts Healthy Volunteers'
+              healthyVolunteers:
+                trial.HealthyVolunteers?.[0] === 'Accepts Healthy Volunteers',
             },
-            locations: (trial.LocationCountry || []).map((country: string, index: number) => ({
-              name: trial.LocationFacility?.[index] || '',
-              city: trial.LocationCity?.[index] || '',
-              country: country,
-              status: trial.LocationStatus?.[index] || ''
-            })),
+            locations: (trial.LocationCountry || []).map(
+              (country: string, index: number) => ({
+                name: trial.LocationFacility?.[index] || '',
+                city: trial.LocationCity?.[index] || '',
+                country: country,
+                status: trial.LocationStatus?.[index] || '',
+              })
+            ),
             sponsors: trial.Sponsor || [],
-            contacts: [] // ClinicalTrials.gov doesn't provide direct contacts
+            contacts: [],
           });
 
           await newTrial.save();
@@ -119,12 +125,13 @@ export class ExternalAPIService {
     }
   }
 
+  // ===============================
   // PubMed API for publications
+  // ===============================
   static async fetchPublications(query: string): Promise<any[]> {
     try {
       console.log(`🔍 Fetching publications for: ${query}`);
-      
-      // Search for publications
+
       const searchResponse = await axios.get(
         'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi',
         {
@@ -133,26 +140,25 @@ export class ExternalAPIService {
             term: query,
             retmode: 'json',
             retmax: 20,
-            sort: 'relevance'
-          }
+            sort: 'relevance',
+          },
         }
       );
 
       const ids = searchResponse.data.esearchresult?.idlist || [];
-      
+
       if (ids.length === 0) {
         return [];
       }
 
-      // Fetch publication details
       const fetchResponse = await axios.get(
         'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
         {
           params: {
             db: 'pubmed',
             id: ids.join(','),
-            retmode: 'json'
-          }
+            retmode: 'json',
+          },
         }
       );
 
@@ -161,13 +167,13 @@ export class ExternalAPIService {
 
       for (const id of ids) {
         const pubData = publicationsData[id];
-        
+
         if (pubData) {
           const existingPub = await Publication.findOne({ pmid: id });
-          
+
           if (!existingPub) {
             const authors = pubData.authors?.map((author: any) => author.name) || [];
-            
+
             const newPublication = new Publication({
               pmid: id,
               title: pubData.title || 'No title available',
@@ -179,13 +185,12 @@ export class ExternalAPIService {
               keywords: pubData.keywords || [],
               url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
               source: 'pubmed',
-              aiSummary: this.generateAISummary(pubData.title, pubData.abstract)
+              aiSummary: this.generateAISummary(pubData.title || '', pubData.abstract || '', 'publication'),
             });
 
             await newPublication.save();
             savedPublications.push(newPublication);
 
-            // Create expert profiles from authors
             await this.createExpertProfiles(authors, pubData.source, query);
           } else {
             savedPublications.push(existingPub);
@@ -201,23 +206,36 @@ export class ExternalAPIService {
     }
   }
 
-  // Generate AI summary (simplified version)
-  private static generateAISummary(title: string, abstract: string): string {
+  // ===============================
+  // Generate AI summary
+  // ===============================
+  public static generateAISummary(title: string, abstract: string, type?: string): string {
     if (!abstract || abstract === 'No abstract available') {
-      return `This research paper titled "${title}" discusses important findings in medical research.`;
+      return `This ${type || 'research'} titled "${title}" discusses important findings in medical research. The study provides valuable insights that could benefit patients and researchers alike.`;
     }
-    
-    // Simple summary generation - in real app, you'd use OpenAI API
+
     const sentences = abstract.split('. ').slice(0, 2);
-    return `This study ${sentences.join('. ')}. The research provides valuable insights into the field.`;
+    let summary = `This ${type || 'study'} ${sentences.join('. ')}. `;
+
+    if (type === 'clinical_trial') {
+      summary += 'This clinical trial investigates potential new treatments that could help patients.';
+    } else if (type === 'publication') {
+      summary += 'The research provides valuable insights for medical professionals and researchers.';
+    } else {
+      summary += 'The findings contribute to advancing medical knowledge and patient care.';
+    }
+
+    return summary;
   }
 
-  // Create expert profiles from publication authors
+  // ===============================
+  // Create expert profiles from authors
+  // ===============================
   private static async createExpertProfiles(authors: string[], institution: string, researchArea: string): Promise<void> {
     try {
-      for (const authorName of authors.slice(0, 5)) { // Limit to first 5 authors
+      for (const authorName of authors.slice(0, 5)) {
         const existingExpert = await Expert.findOne({ name: authorName });
-        
+
         if (!existingExpert) {
           const newExpert = new Expert({
             name: authorName,
@@ -227,10 +245,10 @@ export class ExternalAPIService {
             researchInterests: [researchArea],
             location: {
               city: '',
-              country: ''
+              country: '',
             },
             isOnPlatform: false,
-            isAvailableForMeetings: false
+            isAvailableForMeetings: false,
           });
 
           await newExpert.save();

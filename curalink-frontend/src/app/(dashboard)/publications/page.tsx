@@ -5,6 +5,9 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Publication } from '@/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
+
 
 const queryClient = new QueryClient();
 
@@ -12,6 +15,21 @@ function PublicationsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Mutation for generating AI summaries
+const summaryMutation = useMutation({
+  mutationFn: async ({ text, type }: { text: string; type: string }) => {
+    const response = await axios.post('http://localhost:5000/api/ai/summarize', {
+      text,
+      type,
+    });
+    return response.data;
+  },
+  onError: (error) => {
+    console.error('Error generating summary:', error);
+  },
+});
+
 
   const mockPublications: Publication[] = [
     {
@@ -78,6 +96,20 @@ function PublicationsContent() {
     console.log('Saving publication:', publicationId);
     // Implement save functionality
   };
+  // Add this to publication/trial components
+const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+const handleGenerateSummary = async (content: string, type: 'publication' | 'trial') => {
+  setIsGeneratingSummary(true);
+  try {
+    const result = await summaryMutation.mutateAsync({ text: content, type });
+    // Update the item with the generated summary
+  } catch (error) {
+    console.error('Failed to generate summary:', error);
+  } finally {
+    setIsGeneratingSummary(false);
+  }
+};
 
   return (
     <div className="space-y-6">

@@ -40,7 +40,7 @@ app.use('/api/publications', publicationRoutes);
 app.use('/api/experts', expertRoutes);
 app.use('/api/forums', forumRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-//app.use('/api/ai', aiRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
