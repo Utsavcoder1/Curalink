@@ -1,10 +1,8 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Remove experimental.appDir as it's no longer needed in newer versions
-  images: {
-    domains: [],
-  },
-}
+  output: 'export',
+  basePath: '/Curalink', // Optional: if your repo name is Curalink
+  trailingSlash: true
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

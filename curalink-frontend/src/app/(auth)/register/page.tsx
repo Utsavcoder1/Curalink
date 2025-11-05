@@ -1,6 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useRegister } from '@/hooks/useAuth';
@@ -35,16 +34,7 @@ function RegisterContent() {
     isAvailableForMeetings: false,
   });
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const registerMutation = useRegister();
-
-  useEffect(() => {
-    const role = searchParams.get('role');
-    if (role === 'patient' || role === 'researcher') {
-      setFormData(prev => ({ ...prev, role }));
-    }
-  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,19 +64,16 @@ function RegisterContent() {
         profile: profileData,
       });
       if (result.success) {
-        router.push('/dashboard');
+        alert('Registration successful!');
       }
     } catch (error) {
       console.error('Registration failed:', error);
+      alert('Registration failed. Please try again.');
     }
   };
 
-  const addCondition = () => setPatientData(prev => ({ ...prev, conditions: [...prev.conditions, ''] }));
-  const addInterest = () => setPatientData(prev => ({ ...prev, interests: [...prev.interests, ''] }));
-  const addSpecialty = () =>
-    setResearcherData(prev => ({ ...prev, specialties: [...prev.specialties, ''] }));
-  const addResearchInterest = () =>
-    setResearcherData(prev => ({ ...prev, researchInterests: [...prev.researchInterests, ''] }));
+  const addField = (setter: any, key: string) =>
+    setter((prev: any) => ({ ...prev, [key]: [...prev[key], ''] }));
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -223,7 +210,7 @@ function RegisterContent() {
                   className="border p-2 rounded w-full"
                 />
               ))}
-              <button type="button" onClick={addCondition} className="text-blue-600">
+              <button type="button" onClick={() => addField(setPatientData, 'conditions')} className="text-blue-600">
                 + Add Condition
               </button>
               {patientData.interests.map((i, idx) => (
@@ -240,7 +227,7 @@ function RegisterContent() {
                   className="border p-2 rounded w-full"
                 />
               ))}
-              <button type="button" onClick={addInterest} className="text-blue-600">
+              <button type="button" onClick={() => addField(setPatientData, 'interests')} className="text-blue-600">
                 + Add Interest
               </button>
             </div>
@@ -260,10 +247,9 @@ function RegisterContent() {
                   className="border p-2 rounded w-full"
                 />
               ))}
-              <button type="button" onClick={addSpecialty} className="text-blue-600">
+              <button type="button" onClick={() => addField(setResearcherData, 'specialties')} className="text-blue-600">
                 + Add Specialty
               </button>
-
               <input
                 type="text"
                 placeholder="Institution"
@@ -278,23 +264,6 @@ function RegisterContent() {
                 onChange={e => setResearcherData(prev => ({ ...prev, position: e.target.value }))}
                 className="border p-2 rounded w-full"
               />
-              {researcherData.researchInterests.map((r, i) => (
-                <input
-                  key={i}
-                  placeholder="Research Interest"
-                  value={r}
-                  onChange={e => {
-                    const arr = [...researcherData.researchInterests];
-                    arr[i] = e.target.value;
-                    setResearcherData(prev => ({ ...prev, researchInterests: arr }));
-                  }}
-                  className="border p-2 rounded w-full"
-                />
-              ))}
-              <button type="button" onClick={addResearchInterest} className="text-blue-600">
-                + Add Interest
-              </button>
-
               <input
                 type="text"
                 placeholder="ORCID"
