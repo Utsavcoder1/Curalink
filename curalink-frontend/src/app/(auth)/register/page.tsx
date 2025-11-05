@@ -1,125 +1,344 @@
 'use client';
-
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { useRegister } from '@/hooks/useAuth';
 
-// React Query client
 const queryClient = new QueryClient();
 
 function RegisterContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
+    role: 'patient' as 'patient' | 'researcher',
+    profile: {
+      firstName: '',
+      lastName: '',
+      location: { city: '', country: '' },
+    },
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  const [patientData, setPatientData] = useState({
+    conditions: [''],
+    interests: [''],
+    dateOfBirth: '',
+  });
+
+  const [researcherData, setResearcherData] = useState({
+    specialties: [''],
+    researchInterests: [''],
+    institution: '',
+    position: '',
+    orcid: '',
+    researchGate: '',
+    isAvailableForMeetings: false,
+  });
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const registerMutation = useRegister();
 
   useEffect(() => {
     const role = searchParams.get('role');
-    if (role) {
-      // You can handle role if needed
-      console.log('Role param:', role);
+    if (role === 'patient' || role === 'researcher') {
+      setFormData(prev => ({ ...prev, role }));
     }
   }, [searchParams]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+
+    const profileData =
+      formData.role === 'patient'
+        ? {
+            ...formData.profile,
+            conditions: patientData.conditions.filter(c => c.trim()),
+            interests: patientData.interests.filter(i => i.trim()),
+            dateOfBirth: patientData.dateOfBirth,
+          }
+        : {
+            ...formData.profile,
+            specialties: researcherData.specialties.filter(s => s.trim()),
+            researchInterests: researcherData.researchInterests.filter(r => r.trim()),
+            institution: researcherData.institution,
+            position: researcherData.position,
+            orcid: researcherData.orcid,
+            researchGate: researcherData.researchGate,
+            isAvailableForMeetings: researcherData.isAvailableForMeetings,
+          };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const result = await registerMutation.mutateAsync({
+        ...formData,
+        profile: profileData,
       });
-      const data = await res.json();
-      if (data.success) {
-        router.push('/login');
-      } else {
-        setError(data.message || 'Registration failed');
+      if (result.success) {
+        router.push('/dashboard');
       }
-    } catch (err) {
-      setError('Registration failed');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Registration failed:', error);
     }
   };
 
+  const addCondition = () => setPatientData(prev => ({ ...prev, conditions: [...prev.conditions, ''] }));
+  const addInterest = () => setPatientData(prev => ({ ...prev, interests: [...prev.interests, ''] }));
+  const addSpecialty = () =>
+    setResearcherData(prev => ({ ...prev, specialties: [...prev.specialties, ''] }));
+  const addResearchInterest = () =>
+    setResearcherData(prev => ({ ...prev, researchInterests: [...prev.researchInterests, ''] }));
+
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md p-6">
-        <h1 className="text-2xl font-bold mb-4 text-center">Create Your Account</h1>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <Link href="/" className="text-3xl font-bold text-blue-600">CuraLink</Link>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Join as {formData.role === 'patient' ? 'Patient/Caregiver' : 'Researcher'}
+          </p>
+        </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="John Doe"
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex space-x-4">
+            <button
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, role: 'patient' }))}
+              className={`flex-1 py-3 px-4 rounded-lg border-2 text-center ${
+                formData.role === 'patient'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-300 text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              Patient/Caregiver
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, role: 'researcher' }))}
+              className={`flex-1 py-3 px-4 rounded-lg border-2 text-center ${
+                formData.role === 'researcher'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-300 text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              Researcher
+            </button>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+        <form onSubmit={handleSubmit} className="bg-white shadow-sm rounded-lg p-6 space-y-4">
+          {/* Basic Info */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="First Name"
+                required
+                value={formData.profile.firstName}
+                onChange={e => setFormData(prev => ({
+                  ...prev,
+                  profile: { ...prev.profile, firstName: e.target.value }
+                }))}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                required
+                value={formData.profile.lastName}
+                onChange={e => setFormData(prev => ({
+                  ...prev,
+                  profile: { ...prev.profile, lastName: e.target.value }
+                }))}
+                className="border p-2 rounded w-full"
+              />
+            </div>
             <input
               type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="example@email.com"
+              placeholder="Email"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.email}
+              onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              className="border p-2 rounded w-full"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
               type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="******"
+              placeholder="Password"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              minLength={6}
+              value={formData.password}
+              onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              className="border p-2 rounded w-full"
             />
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="City"
+                required
+                value={formData.profile.location.city}
+                onChange={e => setFormData(prev => ({
+                  ...prev,
+                  profile: { ...prev.profile, location: { ...prev.profile.location, city: e.target.value } }
+                }))}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="Country"
+                required
+                value={formData.profile.location.country}
+                onChange={e => setFormData(prev => ({
+                  ...prev,
+                  profile: { ...prev.profile, location: { ...prev.profile.location, country: e.target.value } }
+                }))}
+                className="border p-2 rounded w-full"
+              />
+            </div>
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {/* Role-specific */}
+          {formData.role === 'patient' ? (
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-gray-900">Medical Information</h3>
+              <input
+                type="date"
+                value={patientData.dateOfBirth}
+                onChange={e => setPatientData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                className="border p-2 rounded w-full"
+              />
+              {patientData.conditions.map((c, i) => (
+                <input
+                  key={i}
+                  type="text"
+                  placeholder="Medical Condition"
+                  value={c}
+                  onChange={e => {
+                    const arr = [...patientData.conditions];
+                    arr[i] = e.target.value;
+                    setPatientData(prev => ({ ...prev, conditions: arr }));
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              ))}
+              <button type="button" onClick={addCondition} className="text-blue-600">
+                + Add Condition
+              </button>
+              {patientData.interests.map((i, idx) => (
+                <input
+                  key={idx}
+                  type="text"
+                  placeholder="Interest"
+                  value={i}
+                  onChange={e => {
+                    const arr = [...patientData.interests];
+                    arr[idx] = e.target.value;
+                    setPatientData(prev => ({ ...prev, interests: arr }));
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              ))}
+              <button type="button" onClick={addInterest} className="text-blue-600">
+                + Add Interest
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-gray-900">Professional Info</h3>
+              {researcherData.specialties.map((s, i) => (
+                <input
+                  key={i}
+                  placeholder="Specialty"
+                  value={s}
+                  onChange={e => {
+                    const arr = [...researcherData.specialties];
+                    arr[i] = e.target.value;
+                    setResearcherData(prev => ({ ...prev, specialties: arr }));
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              ))}
+              <button type="button" onClick={addSpecialty} className="text-blue-600">
+                + Add Specialty
+              </button>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
-          </Button>
+              <input
+                type="text"
+                placeholder="Institution"
+                value={researcherData.institution}
+                onChange={e => setResearcherData(prev => ({ ...prev, institution: e.target.value }))}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="Position"
+                value={researcherData.position}
+                onChange={e => setResearcherData(prev => ({ ...prev, position: e.target.value }))}
+                className="border p-2 rounded w-full"
+              />
+              {researcherData.researchInterests.map((r, i) => (
+                <input
+                  key={i}
+                  placeholder="Research Interest"
+                  value={r}
+                  onChange={e => {
+                    const arr = [...researcherData.researchInterests];
+                    arr[i] = e.target.value;
+                    setResearcherData(prev => ({ ...prev, researchInterests: arr }));
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              ))}
+              <button type="button" onClick={addResearchInterest} className="text-blue-600">
+                + Add Interest
+              </button>
+
+              <input
+                type="text"
+                placeholder="ORCID"
+                value={researcherData.orcid}
+                onChange={e => setResearcherData(prev => ({ ...prev, orcid: e.target.value }))}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="ResearchGate"
+                value={researcherData.researchGate}
+                onChange={e => setResearcherData(prev => ({ ...prev, researchGate: e.target.value }))}
+                className="border p-2 rounded w-full"
+              />
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={researcherData.isAvailableForMeetings}
+                  onChange={e => setResearcherData(prev => ({ ...prev, isAvailableForMeetings: e.target.checked }))}
+                />
+                <span>Available for meetings</span>
+              </label>
+            </div>
+          )}
+
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
+            {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
+          </button>
+
+          <div className="text-center mt-4">
+            <Link href="/login" className="text-blue-600 hover:text-blue-700">
+              Already have an account? Sign in
+            </Link>
+          </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }
 
-// Wrap with QueryClientProvider and Suspense
 export default function RegisterPage() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<div>Loading registration form...</div>}>
-        <RegisterContent />
-      </Suspense>
+      <RegisterContent />
     </QueryClientProvider>
   );
 }
