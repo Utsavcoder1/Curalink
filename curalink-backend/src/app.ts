@@ -33,6 +33,17 @@ app.use(express.urlencoded({ extended: true }));
 // Database connection
 connectDB();
 
+// Add root route - THIS IS THE KEY FIX
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    success: true,
+    message: 'CuraLink Backend API is running!',
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: process.env['NODE_ENV'] || 'development'
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/clinical-trials', clinicalTrialRoutes);
@@ -74,7 +85,7 @@ const PORT = process.env['PORT'] || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 CuraLink Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env['NODE_ENV'] || 'development'}`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🌐 Health check: /api/health`); // Removed localhost
 });
 
 export default app;
