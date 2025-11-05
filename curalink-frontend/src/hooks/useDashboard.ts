@@ -1,9 +1,15 @@
+// src/hooks/useDashboard.ts
 import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
+import { dashboardAPI } from '@/lib/api'; // Change to named import
 import { ClinicalTrial, Publication, Expert } from '@/types';
 
 interface DashboardData {
-  user: any;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    profile: any;
+  };
   recommended: {
     clinicalTrials: ClinicalTrial[];
     publications: Publication[];
@@ -12,12 +18,14 @@ interface DashboardData {
   };
 }
 
+// src/hooks/useDashboard.ts
 export const useDashboard = () => {
   return useQuery({
     queryKey: ['dashboard'],
-    queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: DashboardData }>('/dashboard');
-      return response.data.data;
+    queryFn: async (): Promise<DashboardData> => {
+      const response = await dashboardAPI.getDashboard();
+      // Adjust this based on your actual API response structure
+      return response.data.data; // or just response.data if that's the structure
     },
   });
 };
@@ -26,7 +34,8 @@ export const useFavorites = () => {
   return useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
-      const response = await api.get('/dashboard/favorites');
+      // Use the named export instead of default api
+      const response = await dashboardAPI.getFavorites();
       return response.data.data;
     },
   });

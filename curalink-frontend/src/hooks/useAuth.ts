@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
+import { authAPI } from '@/lib/api'; // Change from default import to named import
 import { authService } from '@/lib/auth';
 import { AuthResponse, User } from '@/types';
 
 export const useLogin = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      const response = await api.post<AuthResponse>('/auth/login', credentials);
+      // Use the named export from api.ts
+      const response = await authAPI.login(credentials.email, credentials.password);
       return response.data;
     },
     onSuccess: (data) => {
@@ -20,7 +21,8 @@ export const useLogin = () => {
 export const useRegister = () => {
   return useMutation({
     mutationFn: async (userData: any) => {
-      const response = await api.post<AuthResponse>('/auth/register', userData);
+      // Use the named export from api.ts
+      const response = await authAPI.register(userData);
       return response.data;
     },
     onSuccess: (data) => {
@@ -31,13 +33,15 @@ export const useRegister = () => {
   });
 };
 
+// In your useAuth.ts - make sure the query only runs when authenticated
 export const useGetCurrentUser = () => {
   return useQuery({
     queryKey: ['currentUser'],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: { user: User } }>('/auth/me');
+      const response = await authAPI.getMe();
       return response.data.data.user;
     },
-    enabled: authService.isAuthenticated(),
+    enabled: typeof window !== 'undefined' && authService.isAuthenticated(), // Only run on client side when authenticated
+    retry: false,
   });
 };

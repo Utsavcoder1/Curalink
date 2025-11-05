@@ -33,7 +33,6 @@ export interface ResearcherProfile {
   avatar?: string;
 }
 
-// src/types/index.ts
 export interface ClinicalTrial {
   _id: string;
   nctId: string;
@@ -63,8 +62,8 @@ export interface ClinicalTrial {
     email: string;
     phone?: string;
   }[];
-  startDate?: string; // Use string instead of Date for frontend
-  completionDate?: string; // Use string instead of Date for frontend
+  startDate?: string;
+  completionDate?: string;
   aiSummary?: string;
   isSavedBy: string[];
 }
@@ -100,6 +99,40 @@ export interface Expert {
   isOnPlatform: boolean;
   isAvailableForMeetings: boolean;
   isSavedBy: string[];
+}
+
+export interface Forum {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  createdBy: string;
+  isActive: boolean;
+}
+
+export interface ForumPost {
+  _id: string;
+  forum: string;
+  title: string;
+  content: string;
+  author: string;
+  authorRole: 'patient' | 'researcher';
+  isQuestion: boolean;
+  tags: string[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ForumReply {
+  _id: string;
+  content: string;
+  author: string;
+  authorRole: 'researcher';
+  post: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthResponse {

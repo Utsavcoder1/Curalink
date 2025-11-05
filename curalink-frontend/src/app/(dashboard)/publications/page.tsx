@@ -1,239 +1,238 @@
 // src/app/(dashboard)/publications/page.tsx
 'use client';
 import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { usePublications, useSavePublication } from '@/hooks/usePublications';
 import { Publication } from '@/types';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useMutation } from '@tanstack/react-query';
-import axios from 'axios';
 
-
-const queryClient = new QueryClient();
-
-function PublicationsContent() {
+export default function PublicationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [publications, setPublications] = useState<Publication[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    journals: '',
+    yearFrom: '',
+    yearTo: ''
+  });
 
-  // Mutation for generating AI summaries
-const summaryMutation = useMutation({
-  mutationFn: async ({ text, type }: { text: string; type: string }) => {
-    const response = await axios.post('http://localhost:5000/api/ai/summarize', {
-      text,
-      type,
-    });
-    return response.data;
-  },
-  onError: (error) => {
-    console.error('Error generating summary:', error);
-  },
-});
+  const { data: publications, isLoading } = usePublications({
+    query: searchQuery,
+    journals: filters.journals,
+    yearFrom: filters.yearFrom,
+    yearTo: filters.yearTo
+  });
 
+  const savePublicationMutation = useSavePublication();
 
-  const mockPublications: Publication[] = [
-    {
-      _id: '1',
-      pmid: '12345678',
-      title: 'Advances in Immunotherapy for Glioblastoma Multiforme',
-      abstract: 'This study explores novel immunotherapy approaches for treating glioblastoma, focusing on checkpoint inhibitors and their efficacy in different patient populations. The research demonstrates promising results in phase 2 clinical trials.',
-      authors: ['Sarah Chen', 'Michael Rodriguez', 'Emily Wang'],
-      journal: 'Nature Medicine',
-      publicationDate: '2024-01-15',
-      doi: '10.1038/s41591-024-00001-1',
-      keywords: ['Glioblastoma', 'Immunotherapy', 'Brain Cancer', 'Checkpoint Inhibitors'],
-      url: 'https://example.com/paper1',
-      aiSummary: 'Researchers developed a new immunotherapy method that shows promising results in treating aggressive brain cancer by enhancing the immune system\'s ability to target cancer cells. The study found significant improvement in survival rates.',
-      isSavedBy: []
-    },
-    {
-      _id: '2',
-      pmid: '12345679',
-      title: 'Targeted Therapy in Non-Small Cell Lung Cancer',
-      abstract: 'Clinical trial results for targeted therapy in advanced lung cancer patients with specific genetic mutations. The study shows significant improvement in progression-free survival.',
-      authors: ['James Wilson', 'Lisa Zhang'],
-      journal: 'The Lancet Oncology',
-      publicationDate: '2024-01-10',
-      doi: '10.1016/S1470-2045(24)00002-2',
-      keywords: ['Lung Cancer', 'Targeted Therapy', 'NSCLC', 'Genetic Mutations'],
-      url: 'https://example.com/paper2',
-      aiSummary: 'A new targeted therapy drug demonstrated significant improvement in survival rates for patients with specific genetic mutations in lung cancer. The treatment showed fewer side effects compared to traditional chemotherapy.',
-      isSavedBy: []
-    },
-    {
-      _id: '3',
-      pmid: '12345680',
-      title: 'CAR-T Cell Therapy for Hematological Malignancies',
-      abstract: 'Long-term follow-up of CAR-T cell therapy in patients with relapsed/refractory hematological malignancies, showing durable responses and manageable toxicity profiles.',
-      authors: ['Robert Kim', 'Maria Garcia', 'David Lee'],
-      journal: 'New England Journal of Medicine',
-      publicationDate: '2024-01-08',
-      doi: '10.1056/NEJMoa2400003',
-      keywords: ['CAR-T Therapy', 'Blood Cancer', 'Immunotherapy', 'Hematology'],
-      url: 'https://example.com/paper3',
-      aiSummary: 'CAR-T cell therapy continues to show promising long-term results for blood cancers, with many patients maintaining remission years after treatment. The study highlights improved safety protocols.',
-      isSavedBy: []
-    }
-  ];
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setPublications(mockPublications.filter(pub => 
-        pub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pub.keywords.some(keyword => 
-          keyword.toLowerCase().includes(searchQuery.toLowerCase())
-        ) ||
-        pub.abstract.toLowerCase().includes(searchQuery.toLowerCase())
-      ));
-      setLoading(false);
-    }, 1000);
+  const handleSavePublication = (publicationId: string) => {
+    savePublicationMutation.mutate(publicationId);
   };
 
-  const handleSavePublication = async (publicationId: string) => {
-    console.log('Saving publication:', publicationId);
-    // Implement save functionality
-  };
-  // Add this to publication/trial components
-const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-
-const handleGenerateSummary = async (content: string, type: 'publication' | 'trial') => {
-  setIsGeneratingSummary(true);
-  try {
-    const result = await summaryMutation.mutateAsync({ text: content, type });
-    // Update the item with the generated summary
-  } catch (error) {
-    console.error('Failed to generate summary:', error);
-  } finally {
-    setIsGeneratingSummary(false);
-  }
-};
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 20 }, (_, i) => currentYear - i);
 
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-3xl font-bold text-gray-900">Publications</h1>
+      {/* Page Header */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Research Publications</h1>
         <p className="text-gray-600 mt-2">
-          Discover the latest medical research with AI-generated summaries
+          Discover the latest research and medical publications relevant to your interests
         </p>
       </div>
 
-      {/* Search Section */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold">Search Publications</h2>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="e.g., Brain Cancer, Immunotherapy, Gene Therapy"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <Button type="submit" loading={loading}>
-                Search
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Search Input */}
+          <div className="md:col-span-2">
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+              Search Publications
+            </label>
+            <input
+              type="text"
+              id="search"
+              placeholder="Search by title, abstract, keywords, or authors..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Journal Filter */}
+          <div>
+            <label htmlFor="journal" className="block text-sm font-medium text-gray-700 mb-1">
+              Journal
+            </label>
+            <input
+              type="text"
+              id="journal"
+              placeholder="e.g., Nature, JAMA"
+              value={filters.journals}
+              onChange={(e) => setFilters(prev => ({ ...prev, journals: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Year From Filter */}
+          <div>
+            <label htmlFor="yearFrom" className="block text-sm font-medium text-gray-700 mb-1">
+              Year From
+            </label>
+            <select
+              id="yearFrom"
+              value={filters.yearFrom}
+              onChange={(e) => setFilters(prev => ({ ...prev, yearFrom: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Any Year</option>
+              {yearOptions.map(year => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year To Filter */}
+          <div>
+            <label htmlFor="yearTo" className="block text-sm font-medium text-gray-700 mb-1">
+              Year To
+            </label>
+            <select
+              id="yearTo"
+              value={filters.yearTo}
+              onChange={(e) => setFilters(prev => ({ ...prev, yearTo: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Any Year</option>
+              {yearOptions.map(year => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Results */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Search Results</h2>
-        
-        {loading ? (
-          <div className="text-center py-8">
+      <div className="bg-white rounded-lg shadow-sm">
+        {isLoading ? (
+          <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Searching for publications...</p>
+            <p className="mt-4 text-gray-600">Searching publications...</p>
           </div>
-        ) : publications.length > 0 ? (
-          publications.map((publication) => (
-            <Card key={publication._id}>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {publication.title}
-                    </h3>
-                    <p className="text-gray-600 mb-2">
-                      <strong>Authors:</strong> {publication.authors.join(', ')}
-                    </p>
-                    <p className="text-gray-600 mb-2">
-                      <strong>Journal:</strong> {publication.journal}
-                    </p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
-                      <span>
-                        {new Date(publication.publicationDate).toLocaleDateString()}
-                      </span>
-                      {publication.doi && (
-                        <span>DOI: {publication.doi}</span>
-                      )}
+        ) : (
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {publications?.length || 0} Publications Found
+            </h2>
+            
+            <div className="space-y-6">
+              {publications?.map((publication: Publication) => (
+                <div key={publication._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {publication.title}
+                      </h3>
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                        <span className="font-medium">{publication.journal}</span>
+                        {publication.publicationDate && (
+                          <span>
+                            {new Date(publication.publicationDate).getFullYear()}
+                          </span>
+                        )}
+                        {publication.doi && (
+                          <span className="text-blue-600">DOI: {publication.doi}</span>
+                        )}
+                      </div>
+
+                      <div className="mb-3">
+                        <h4 className="text-sm font-medium text-gray-700 mb-1">Authors</h4>
+                        <p className="text-sm text-gray-600">
+                          {publication.authors?.slice(0, 5).join(', ')}
+                          {publication.authors && publication.authors.length > 5 && ' et al.'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleSavePublication(publication._id)}
+                      disabled={savePublicationMutation.isPending}
+                      className="text-gray-400 hover:text-yellow-500 transition-colors disabled:opacity-50 ml-4"
+                      title="Save to favorites"
+                    >
+                      ⭐
+                    </button>
+                  </div>
+
+                  {/* AI Summary */}
+                  {publication.aiSummary && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">AI Summary</h4>
+                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded leading-relaxed">
+                        {publication.aiSummary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Abstract Preview */}
+                  {publication.abstract && publication.abstract !== 'No abstract available' && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Abstract</h4>
+                      <p className="text-sm text-gray-600 line-clamp-3">
+                        {publication.abstract}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Keywords */}
+                  {publication.keywords && publication.keywords.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Keywords</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {publication.keywords.slice(0, 8).map((keyword, index) => (
+                          <span key={index} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            {keyword}
+                          </span>
+                        ))}
+                        {publication.keywords.length > 8 && (
+                          <span className="text-xs text-gray-500">+{publication.keywords.length - 8} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
                       {publication.pmid && (
                         <span>PMID: {publication.pmid}</span>
                       )}
                     </div>
-                    
-                    {publication.aiSummary && (
-                      <div className="mt-3 p-3 bg-green-50 rounded-lg mb-3">
-                        <p className="text-sm font-medium text-green-800 mb-1">AI Summary:</p>
-                        <p className="text-sm text-green-700">{publication.aiSummary}</p>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {publication.keywords.map((keyword, index) => (
-                        <span
-                          key={index}
-                          className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
-                        >
-                          #{keyword}
-                        </span>
-                      ))}
+                    <div className="flex space-x-3">
+                      <a
+                        href={publication.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View Full Paper
+                      </a>
                     </div>
                   </div>
-                  <div className="flex space-x-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSavePublication(publication._id)}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => window.open(publication.url, '_blank')}
-                    >
-                      View Paper
-                    </Button>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-gray-500">No publications found. Try a different search.</p>
-            </CardContent>
-          </Card>
+              ))}
+            </div>
+
+            {(!publications || publications.length === 0) && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No publications found. Try adjusting your search criteria.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
-  );
-}
-
-export default function PublicationsPage() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <PublicationsContent />
-    </QueryClientProvider>
   );
 }

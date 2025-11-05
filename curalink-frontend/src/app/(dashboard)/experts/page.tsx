@@ -1,197 +1,195 @@
 // src/app/(dashboard)/experts/page.tsx
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { authService } from '@/lib/auth';
+import { useExperts, useSaveExpert, useRequestMeeting, useNudgeExpert } from '@/hooks/useExperts';
+import { useGetCurrentUser } from '@/hooks/useAuth';
 import { Expert } from '@/types';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient();
-
-function ExpertsContent() {
+export default function ExpertsPage() {
+  const { data: user } = useGetCurrentUser();
   const [searchQuery, setSearchQuery] = useState('');
-  const [proximity, setProximity] = useState(true);
-  const [experts, setExperts] = useState<Expert[]>([]);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const user = authService.getCurrentUser();
+  const [filters, setFilters] = useState({
+    specialties: '',
+    location: '',
+    proximity: false
+  });
 
-  const mockExperts: Expert[] = [
-    {
-      _id: '1',
-      name: 'Dr. Sarah Chen',
-      institution: 'Harvard Medical School',
-      position: 'Oncology Researcher',
-      specialties: ['Brain Cancer', 'Glioblastoma'],
-      researchInterests: ['Immunotherapy', 'Targeted Therapy'],
-      location: { city: 'Boston', country: 'USA' },
-      publications: [],
-      isOnPlatform: true,
-      isAvailableForMeetings: true,
-      isSavedBy: []
-    },
-    {
-      _id: '2',
-      name: 'Dr. Michael Rodriguez',
-      institution: 'MD Anderson Cancer Center',
-      position: 'Neurology Specialist',
-      specialties: ['Neuro-oncology', 'Brain Tumors'],
-      researchInterests: ['Gene Therapy', 'Clinical Trials'],
-      location: { city: 'Houston', country: 'USA' },
-      publications: [],
-      isOnPlatform: false,
-      isAvailableForMeetings: false,
-      isSavedBy: []
-    },
-    {
-      _id: '3',
-      name: 'Dr. Emily Wang',
-      institution: 'Stanford University',
-      position: 'Cancer Immunologist',
-      specialties: ['Immunotherapy', 'Lung Cancer'],
-      researchInterests: ['Checkpoint Inhibitors', 'CAR-T Therapy'],
-      location: { city: 'Stanford', country: 'USA' },
-      publications: [],
-      isOnPlatform: true,
-      isAvailableForMeetings: true,
-      isSavedBy: []
-    }
-  ];
+  // Use real API hooks
+  const { data: experts, isLoading, error } = useExperts({
+    query: searchQuery,
+    specialties: filters.specialties,
+    location: filters.location,
+    proximity: filters.proximity
+  });
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setExperts(mockExperts.filter(expert => 
-        expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        expert.specialties.some(specialty => 
-          specialty.toLowerCase().includes(searchQuery.toLowerCase())
-        ) ||
-        expert.researchInterests.some(interest => 
-          interest.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      ));
-      setLoading(false);
-    }, 1000);
-  };
+  const saveExpertMutation = useSaveExpert();
+  const requestMeetingMutation = useRequestMeeting();
+  const nudgeExpertMutation = useNudgeExpert();
 
-  const handleSaveExpert = async (expertId: string) => {
-    console.log('Saving expert:', expertId);
-    // Implement save functionality
+  const handleSaveExpert = (expertId: string) => {
+    saveExpertMutation.mutate(expertId);
   };
 
   const handleRequestMeeting = (expert: Expert) => {
-    if (!expert.isOnPlatform) {
-      alert('This expert is not on the platform. A meeting request has been sent to our admin team who will contact them manually.');
-      return;
-    }
-    alert(`Meeting request sent to ${expert.name}`);
+    requestMeetingMutation.mutate({
+      expertId: expert._id,
+      meetingData: {
+        message: `Meeting request from ${user?.profile?.firstName || 'user'}`,
+        preferredDates: []
+      }
+    });
   };
 
   const handleNudgeExpert = (expertId: string) => {
-    alert('Expert has been nudged to join the platform!');
+    nudgeExpertMutation.mutate(expertId);
   };
+
+  const isPatient = user?.role === 'patient';
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-600">Error loading experts: {(error as Error).message}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          {user?.role === 'patient' ? 'Health Experts' : 'Collaborators'}
+      {/* Page Header */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isPatient ? 'Health Experts' : 'Collaborators'}
         </h1>
         <p className="text-gray-600 mt-2">
-          Find and connect with {user?.role === 'patient' ? 'health experts' : 'research collaborators'} in your field
+          {isPatient 
+            ? 'Connect with medical experts specializing in your conditions'
+            : 'Discover researchers with similar interests for collaboration'
+          }
         </p>
       </div>
 
-      {/* Search Section */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold">
-            Search {user?.role === 'patient' ? 'Health Experts' : 'Collaborators'}
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="e.g., Brain Cancer, Immunotherapy, Dr. Name"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <Button type="submit" loading={loading}>
-                Search
-              </Button>
-            </div>
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Search Input */}
+          <div className="md:col-span-2">
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+              Search {isPatient ? 'Experts' : 'Collaborators'}
+            </label>
+            <input
+              type="text"
+              id="search"
+              placeholder={`Search by name, specialty, or institution...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            <div className="flex items-center">
+          {/* Specialty Filter */}
+          <div>
+            <label htmlFor="specialty" className="block text-sm font-medium text-gray-700 mb-1">
+              Specialty
+            </label>
+            <input
+              type="text"
+              id="specialty"
+              placeholder="e.g., Oncology"
+              value={filters.specialties}
+              onChange={(e) => setFilters(prev => ({ ...prev, specialties: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Location Filter */}
+          <div>
+            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+              Location
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                id="location"
+                placeholder="Country or city"
+                value={filters.location}
+                onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="mt-2 flex items-center">
               <input
                 type="checkbox"
                 id="proximity"
-                checked={proximity}
-                onChange={(e) => setProximity(e.target.checked)}
+                checked={filters.proximity}
+                onChange={(e) => setFilters(prev => ({ ...prev, proximity: e.target.checked }))}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label htmlFor="proximity" className="ml-2 block text-sm text-gray-700">
-                Show experts near my location
+              <label htmlFor="proximity" className="ml-2 text-sm text-gray-700">
+                Show nearby only
               </label>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
 
       {/* Results */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Search Results</h2>
-        
-        {loading ? (
-          <div className="text-center py-8">
+      <div className="bg-white rounded-lg shadow-sm">
+        {isLoading ? (
+          <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Searching for experts...</p>
+            <p className="mt-4 text-gray-600">Searching for {isPatient ? 'experts' : 'collaborators'}...</p>
           </div>
-        ) : experts.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2">
-            {experts.map((expert) => (
-              <Card key={expert._id}>
-                <CardContent className="p-6">
+        ) : (
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {experts?.length || 0} {isPatient ? 'Experts' : 'Collaborators'} Found
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {experts?.map((expert: Expert) => (
+                <div key={expert._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{expert.name}</h3>
-                      <p className="text-gray-600">{expert.position}</p>
-                      <p className="text-gray-500 text-sm">{expert.institution}</p>
+                      <p className="text-gray-600 text-sm">{expert.institution}</p>
+                      <p className="text-gray-500 text-sm">{expert.position}</p>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSaveExpert(expert._id)}
-                      >
-                        Save
-                      </Button>
+                    <button
+                      onClick={() => handleSaveExpert(expert._id)}
+                      disabled={saveExpertMutation.isPending}
+                      className="text-gray-400 hover:text-yellow-500 transition-colors disabled:opacity-50"
+                      title="Save to favorites"
+                    >
+                      ⭐
+                    </button>
+                  </div>
+                  
+                  {expert.location?.country && (
+                    <p className="text-gray-500 text-sm mb-3">
+                      📍 {expert.location.city && `${expert.location.city}, `}{expert.location.country}
+                    </p>
+                  )}
+
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Specialties:</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {expert.specialties?.slice(0, 3).map((specialty, index) => (
+                        <span key={index} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                          {specialty}
+                        </span>
+                      ))}
+                      {expert.specialties && expert.specialties.length > 3 && (
+                        <span className="text-xs text-gray-500">+{expert.specialties.length - 3} more</span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div>
-                      <span className="font-medium text-gray-700">Specialties: </span>
-                      <span className="text-gray-600">{expert.specialties.join(', ')}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Research Interests: </span>
-                      <span className="text-gray-600">{expert.researchInterests.join(', ')}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Location: </span>
-                      <span className="text-gray-600">
-                        {expert.location.city}, {expert.location.country}
-                      </span>
-                    </div>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Research Interests:</h4>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {expert.researchInterests?.join(', ')}
+                    </p>
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -214,44 +212,35 @@ function ExpertsContent() {
                     
                     <div className="flex space-x-2">
                       {!expert.isOnPlatform && (
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <button
                           onClick={() => handleNudgeExpert(expert._id)}
+                          disabled={nudgeExpertMutation.isPending}
+                          className="text-sm text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50"
                         >
-                          Nudge to Join
-                        </Button>
+                          Nudge
+                        </button>
                       )}
-                      <Button
-                        size="sm"
+                      <button
                         onClick={() => handleRequestMeeting(expert)}
+                        disabled={requestMeetingMutation.isPending}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                       >
-                        Request Meeting
-                      </Button>
+                        {isPatient ? 'Request Meeting' : 'Connect'}
+                      </button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))}
+            </div>
+
+            {(!experts || experts.length === 0) && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No {isPatient ? 'experts' : 'collaborators'} found. Try adjusting your search criteria.</p>
+              </div>
+            )}
           </div>
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-gray-500">
-                No {user?.role === 'patient' ? 'health experts' : 'collaborators'} found. Try a different search.
-              </p>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>
-  );
-}
-
-export default function ExpertsPage() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ExpertsContent />
-    </QueryClientProvider>
   );
 }

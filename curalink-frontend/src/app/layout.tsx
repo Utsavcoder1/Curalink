@@ -2,12 +2,14 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { ReactQueryProvider } from '@/providers/ReactQueryProvider'; // Use your existing file
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'CuraLink - Connect Patients and Researchers',
-  description: 'AI-powered platform for clinical trials, publications, and expert connections',
+  description: 'AI-powered platform connecting patients and researchers',
 };
 
 export default function RootLayout({
@@ -18,7 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
+        <ReactQueryProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );

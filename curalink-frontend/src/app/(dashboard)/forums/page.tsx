@@ -1,340 +1,326 @@
 // src/app/(dashboard)/forums/page.tsx
 'use client';
 import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { authService } from '@/lib/auth';
+import { useGetCurrentUser } from '@/hooks/useAuth';
+import { Forum, ForumPost } from '@/types';
 
-interface Forum {
-  _id: string;
-  title: string;
-  description: string;
-  category: string;
-  postCount: number;
-  latestPost: {
-    title: string;
-    author: string;
-    date: string;
-  };
-}
+// Mock data - you'll replace this with real API calls
+const mockForums: Forum[] = [
+  {
+    _id: '1',
+    title: 'Cancer Research',
+    description: 'Discussions about latest cancer research and treatments',
+    category: 'Research',
+    createdBy: 'admin',
+    isActive: true
+  },
+  {
+    _id: '2',
+    title: 'Clinical Trials Insights',
+    description: 'Share experiences and insights about clinical trials',
+    category: 'Clinical Trials',
+    createdBy: 'admin',
+    isActive: true
+  },
+  {
+    _id: '3',
+    title: 'Patient Support',
+    description: 'Support and advice for patients and caregivers',
+    category: 'Support',
+    createdBy: 'admin',
+    isActive: true
+  },
+  {
+    _id: '4',
+    title: 'Research Collaboration',
+    description: 'Connect with other researchers for collaboration opportunities',
+    category: 'Collaboration',
+    createdBy: 'admin',
+    isActive: true
+  }
+];
 
-interface ForumPost {
-  _id: string;
-  title: string;
-  content: string;
-  author: string;
-  authorRole: string;
-  isQuestion: boolean;
-  tags: string[];
-  replies: number;
-  createdAt: string;
-}
+const mockPosts: ForumPost[] = [
+  {
+    _id: '1',
+    forum: '1',
+    title: 'Latest advancements in immunotherapy for brain cancer',
+    content: 'I\'ve been researching recent developments in immunotherapy approaches for glioblastoma. Has anyone come across promising clinical trials or research papers in this area?',
+    author: 'patient123',
+    authorRole: 'patient',
+    isQuestion: true,
+    tags: ['immunotherapy', 'brain-cancer', 'clinical-trials'],
+    isActive: true
+  },
+  {
+    _id: '2',
+    forum: '1',
+    title: 'CAR-T therapy results in pediatric patients',
+    content: 'Our research team has observed remarkable results with CAR-T therapy in pediatric oncology cases. The response rates have been encouraging, though we\'re monitoring long-term effects.',
+    author: 'dr_smith',
+    authorRole: 'researcher',
+    isQuestion: false,
+    tags: ['car-t', 'pediatric', 'oncology'],
+    isActive: true
+  }
+];
 
 export default function ForumsPage() {
-  const [activeForum, setActiveForum] = useState<string | null>(null);
-  const [showNewPostForm, setShowNewPostForm] = useState(false);
+  const { data: user } = useGetCurrentUser();
+  const [selectedForum, setSelectedForum] = useState<Forum | null>(null);
+  const [posts, setPosts] = useState<ForumPost[]>(mockPosts);
+  const [showCreatePost, setShowCreatePost] = useState(false);
   const [newPost, setNewPost] = useState({
     title: '',
     content: '',
-    isQuestion: false,
+    isQuestion: true,
     tags: [] as string[]
   });
-  const user = authService.getCurrentUser();
 
-  const mockForums: Forum[] = [
-    {
-      _id: '1',
-      title: 'Cancer Research',
-      description: 'Discussions about latest cancer research and treatments',
-      category: 'Research',
-      postCount: 142,
-      latestPost: {
-        title: 'New immunotherapy approach',
-        author: 'Dr. Sarah Chen',
-        date: '2024-01-15'
-      }
-    },
-    {
-      _id: '2',
-      title: 'Clinical Trials Insights',
-      description: 'Share experiences and insights about clinical trials',
-      category: 'Clinical Trials',
-      postCount: 89,
-      latestPost: {
-        title: 'Phase 3 trial results',
-        author: 'Patient123',
-        date: '2024-01-14'
-      }
-    },
-    {
-      _id: '3',
-      title: 'Treatment Questions',
-      description: 'Ask questions about treatments and get answers from researchers',
-      category: 'Q&A',
-      postCount: 256,
-      latestPost: {
-        title: 'Side effects management',
-        author: 'Caregiver456',
-        date: '2024-01-16'
-      }
-    }
-  ];
+  const handleForumSelect = (forum: Forum) => {
+    setSelectedForum(forum);
+    // In real implementation, you would fetch posts for this forum
+  };
 
-  const mockPosts: ForumPost[] = [
-    {
-      _id: '1',
-      title: 'New immunotherapy approach for brain cancer',
-      content: 'I recently read about this new immunotherapy method that shows promising results in treating glioblastoma. Has anyone here participated in similar trials or have experience with this treatment approach?',
-      author: 'Patient123',
-      authorRole: 'patient',
-      isQuestion: true,
-      tags: ['brain-cancer', 'immunotherapy', 'glioblastoma'],
-      replies: 5,
-      createdAt: '2024-01-15'
-    },
-    {
-      _id: '2',
-      title: 'Phase 3 trial results published for lung cancer treatment',
-      content: 'The latest phase 3 trial results show promising outcomes for the new targeted therapy drug. Significant improvement in survival rates was observed in patients with specific genetic mutations.',
-      author: 'Dr. Sarah Chen',
-      authorRole: 'researcher',
-      isQuestion: false,
-      tags: ['clinical-trial', 'results', 'lung-cancer', 'targeted-therapy'],
-      replies: 12,
-      createdAt: '2024-01-14'
-    }
-  ];
-
-  const handleCreatePost = async (e: React.FormEvent) => {
+  const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Creating post:', newPost);
-    setShowNewPostForm(false);
-    setNewPost({ title: '', content: '', isQuestion: false, tags: [] });
+    if (!selectedForum) return;
+
+    const post: ForumPost = {
+      _id: Date.now().toString(),
+      forum: selectedForum._id,
+      title: newPost.title,
+      content: newPost.content,
+      author: user?._id || 'user',
+      authorRole: user?.role === 'researcher' ? 'researcher' : 'patient',
+      isQuestion: newPost.isQuestion,
+      tags: newPost.tags,
+      isActive: true
+    };
+
+    setPosts(prev => [post, ...prev]);
+    setNewPost({ title: '', content: '', isQuestion: true, tags: [] });
+    setShowCreatePost(false);
   };
 
-  const handleViewDiscussion = (postId: string) => {
-    console.log('Viewing discussion for post:', postId);
-  };
-
-  const selectedForum = mockForums.find(f => f._id === activeForum);
+  const isPatient = user?.role === 'patient';
 
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Forums</h1>
-            <p className="text-gray-600 mt-2">
-              Connect with {user?.role === 'patient' ? 'researchers and other patients' : 'patients and colleagues'}
-            </p>
-          </div>
-          {user && (
-            <Button onClick={() => setShowNewPostForm(true)}>
-              {user.role === 'patient' ? 'New Question' : 'New Post'}
-            </Button>
-          )}
-        </div>
+      {/* Page Header */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Community Forums</h1>
+        <p className="text-gray-600 mt-2">
+          Connect with {isPatient ? 'researchers and other patients' : 'patients and fellow researchers'} to share knowledge and experiences
+        </p>
       </div>
 
-      {showNewPostForm && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Create New Post</h2>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreatePost} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Title</label>
-                <input
-                  type="text"
-                  required
-                  value={newPost.title}
-                  onChange={(e) => setNewPost(prev => ({ ...prev, title: e.target.value }))}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your question or discussion topic"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Content</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={newPost.content}
-                  onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Describe your question or topic in detail..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tags</label>
-                <input
-                  type="text"
-                  value={newPost.tags.join(', ')}
-                  onChange={(e) => setNewPost(prev => ({ 
-                    ...prev, 
-                    tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
-                  }))}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Add tags separated by commas (e.g., cancer, treatment, research)"
-                />
-              </div>
-              {user?.role === 'patient' && (
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isQuestion"
-                    checked={newPost.isQuestion}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, isQuestion: e.target.checked }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="isQuestion" className="ml-2 block text-sm text-gray-700">
-                    This is a question (only researchers can reply)
-                  </label>
-                </div>
-              )}
-              <div className="flex justify-end space-x-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowNewPostForm(false)}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Forums List */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Forums</h2>
+            <div className="space-y-2">
+              {mockForums.map((forum) => (
+                <button
+                  key={forum._id}
+                  onClick={() => handleForumSelect(forum)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    selectedForum?._id === forum._id
+                      ? 'bg-blue-50 border border-blue-200'
+                      : 'hover:bg-gray-50 border border-transparent'
+                  }`}
                 >
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  Create Post
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {!activeForum ? (
-        // Forum List View
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {mockForums.map((forum) => (
-            <Card 
-              key={forum._id} 
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setActiveForum(forum._id)}
-            >
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">{forum.title}</h3>
-                <p className="text-sm text-gray-600 mt-1">{forum.description}</p>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                  <h3 className="font-medium text-gray-900">{forum.title}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{forum.description}</p>
+                  <span className="inline-block mt-2 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                     {forum.category}
                   </span>
-                  <span>{forum.postCount} posts</span>
-                </div>
-                {forum.latestPost && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                      {forum.latestPost.title}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      By {forum.latestPost.author} • {forum.latestPost.date}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        // Posts List View
-        <div>
-          <div className="flex items-center space-x-4 mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => setActiveForum(null)}
-              className="flex items-center"
-            >
-              ← Back to Forums
-            </Button>
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">
-                {selectedForum?.title}
-              </h2>
-              <p className="text-gray-600 mt-1">{selectedForum?.description}</p>
+                </button>
+              ))}
             </div>
           </div>
+        </div>
 
-          <div className="space-y-4">
-            {mockPosts.map((post) => (
-              <Card key={post._id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {post.title}
-                        </h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ml-2 ${
-                          post.authorRole === 'researcher' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {post.authorRole}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-3 line-clamp-2">
-                        {post.content}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span>By {post.author}</span>
-                        <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                        <span>{post.replies} replies</span>
-                        {post.isQuestion && (
-                          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">
-                            Question
+        {/* Posts Area */}
+        <div className="lg:col-span-3">
+          {selectedForum ? (
+            <div className="space-y-6">
+              {/* Forum Header */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedForum.title}</h2>
+                    <p className="text-gray-600 mt-1">{selectedForum.description}</p>
+                  </div>
+                  {!isPatient && (
+                    <button
+                      onClick={() => setShowCreatePost(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      New Post
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Create Post Form */}
+              {showCreatePost && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Post</h3>
+                  <form onSubmit={handleCreatePost} className="space-y-4">
+                    <div>
+                      <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                        Title
+                      </label>
+                      <input
+                        type="text"
+                        id="title"
+                        required
+                        value={newPost.title}
+                        onChange={(e) => setNewPost(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter post title..."
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+                        Content
+                      </label>
+                      <textarea
+                        id="content"
+                        required
+                        rows={4}
+                        value={newPost.content}
+                        onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Write your post content..."
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="isQuestion"
+                        checked={newPost.isQuestion}
+                        onChange={(e) => setNewPost(prev => ({ ...prev, isQuestion: e.target.checked }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isQuestion" className="ml-2 block text-sm text-gray-700">
+                        This is a question
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatePost(false)}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Create Post
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Posts List */}
+              <div className="space-y-4">
+                {posts.filter(post => post.forum === selectedForum._id).map((post) => (
+                  <div key={post._id} className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            post.authorRole === 'researcher' 
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {post.authorRole}
                           </span>
-                        )}
+                          {post.isQuestion && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              Question
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <span className="text-sm text-gray-500">
+                        {new Date().toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-700 mb-4">{post.content}</p>
+
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
                         {post.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
-                          >
+                          <span key={index} className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
                             #{tag}
                           </span>
                         ))}
                       </div>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleViewDiscussion(post._id)}
-                      className="ml-4"
-                    >
-                      View Discussion
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    )}
 
-          {mockPosts.length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
-                <p className="text-gray-500 mb-4">Be the first to start a discussion in this forum</p>
-                <Button onClick={() => setShowNewPostForm(true)}>
-                  Create First Post
-                </Button>
-              </CardContent>
-            </Card>
+                    {/* Only researchers can reply */}
+                    {user?.role === 'researcher' && (
+                      <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                          Reply to Post
+                        </button>
+                        <span className="text-sm text-gray-500">0 replies</span>
+                      </div>
+                    )}
+
+                    {/* Patients can only view */}
+                    {isPatient && (
+                      <div className="pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-500">
+                          {post.authorRole === 'researcher' 
+                            ? 'Researcher post - awaiting patient questions'
+                            : 'Your question - awaiting researcher responses'
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {posts.filter(post => post.forum === selectedForum._id).length === 0 && (
+                  <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                    <p className="text-gray-500">No posts in this forum yet.</p>
+                    {!isPatient && (
+                      <button
+                        onClick={() => setShowCreatePost(true)}
+                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Create First Post
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Forum</h3>
+                <p className="text-gray-600">
+                  Choose a forum from the left to view discussions and {isPatient ? 'ask questions' : 'participate in conversations'}.
+                </p>
+              </div>
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,62 +1,37 @@
 // src/app/(dashboard)/layout.tsx
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/auth';
+import React, { useEffect } from 'react';
+import { useGetCurrentUser } from '@/hooks/useAuth';
 import { Header } from '@/components/Layout/Header';
-import { User } from '@/types';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { data: user, isLoading } = useGetCurrentUser();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Check authentication on client side only
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
-
-    if (!currentUser) {
+    if (!isLoading && !user) {
       router.push('/login');
     }
-  }, [router]);
+  }, [user, isLoading, router]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    // This will briefly show before redirecting
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to login...</p>
-        </div>
-      </div>
-    );
+  // Don't render anything until we know the auth state
+  if (isLoading || !user) {
+    return null;
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Header user={user} />
-      <main className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>
-    </>
+    </div>
   );
 }
