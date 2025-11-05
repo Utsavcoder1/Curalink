@@ -2,15 +2,13 @@
   "name": "curalink-frontend",
   "version": "0.1.0",
   "private": true,
- "scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint",
-  "deploy": "next build && gh-pages -d out"
-}
-
-,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "deploy": "next build && gh-pages -d out"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.90.6",
     "axios": "^1.6.0",
