@@ -1,12 +1,10 @@
+// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  distDir: 'out', // ensures build output goes into /out for GitHub Pages
-  images: {
-    unoptimized: true, // disable Next image optimization for static export
-  },
-  basePath: '/Curalink', // 👈 use your GitHub repo name here (case-sensitive)
+  output: 'export', // for static export
+  images: { unoptimized: true }, // since GitHub Pages doesn't support next/image optimization
+  basePath: '/Curalink',
   assetPrefix: '/Curalink/',
 };
 
-module.exports = nextConfig;
+export default nextConfig;
